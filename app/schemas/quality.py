@@ -26,7 +26,7 @@ class QualityResult(BaseModel):
 class QualityResponse(QualityResult):
     """Quality assessment response with metadata."""
 
-    pass
+    meta: Meta
 
 
 class BatchQualityItem(BaseModel):

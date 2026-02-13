@@ -94,7 +94,7 @@ class RedisStatsManager:
             pipe.get("stats:error_count")
             pipe.get("stats:start_time")
 
-            request_count, success_count, error_count, start_time = pipe.execute()
+            request_count, success_count, error_count, start_time = await pipe.execute()
 
             # Initialize counters if not set
             if request_count is None:

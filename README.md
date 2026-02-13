@@ -117,6 +117,13 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 ## API Endpoints
 
+### Historical Record APIs
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/history/push` | Push historical audit records to vector database |
+| `GET` | `/api/history/stats` | Get vector database statistics |
+
 ### Atomic APIs
 
 | Method | Endpoint | Description |
@@ -145,6 +152,63 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 | `GET` | `/api/v1/stats` | Request statistics |
 
 ## Usage Examples
+
+### Push Historical Records
+
+```bash
+curl -X POST "http://localhost:8000/api/history/push" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "records": [
+      {
+        "id": "record_001",
+        "image_url": "https://example.com/image1.jpg",
+        "aircraft_type": "A320",
+        "airline": "CEA",
+        "aircraft_confidence": 0.85,
+        "airline_confidence": 0.75,
+        "timestamp": "2025-01-28T10:00:00Z",
+        "metadata": {
+          "image_data": "data:image/jpeg;base64,/9j/4AAQ..."
+        }
+      }
+    ]
+  }'
+```
+
+**Response**:
+```json
+{
+  "success": true,
+  "total": 1,
+  "added": 1,
+  "failed": 0
+}
+```
+
+### Get Historical Record Statistics
+
+```bash
+curl -X GET "http://localhost:8000/api/history/stats"
+```
+
+**Response**:
+```json
+{
+  "available": true,
+  "total_records": 1000,
+  "aircraft_types": {
+    "A320": 350,
+    "B738": 450,
+    "A321": 200
+  },
+  "airlines": {
+    "CEA": 500,
+    "CSN": 300,
+    "CAC": 200
+  }
+}
+```
 
 ### Quality Assessment
 

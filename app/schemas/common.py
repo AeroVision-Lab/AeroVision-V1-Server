@@ -2,7 +2,7 @@
 Common Pydantic schemas for Aerovision-V1-Server.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ class Meta(BaseModel):
         ge=0
     )
     timestamp: datetime = Field(
-        default_factory=datetime.utcnow,
+        default_factory=lambda: datetime.now(timezone.utc),
         description="Response timestamp in UTC"
     )
 

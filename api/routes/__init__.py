@@ -2,6 +2,6 @@
 API 路由
 """
 
-from . import review, health
+from . import review, health, history
 
-__all__ = ["review", "health"]
+__all__ = ["review", "health", "history"]

@@ -4,6 +4,7 @@
 
 from enum import Enum
 from typing import List, Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -15,6 +16,20 @@ class ReviewType(str, Enum):
     REGISTRATION = "registration"
     OCCLUSION = "occlusion"
     VIOLATION = "violation"
+
+
+class HistoricalRecordRequest(BaseModel):
+    """历史审核记录推送请求"""
+    id: str = Field(description="记录 ID")
+    image_path: str = Field(description="图片路径")
+    image_url: Optional[str] = Field(default=None, description="图片 URL（可选）")
+    aircraft_type: str = Field(description="机型")
+    airline: str = Field(description="航司")
+    aircraft_confidence: float = Field(description="机型置信度", ge=0, le=1)
+    airline_confidence: float = Field(description="航司置信度", ge=0, le=1)
+    registration: Optional[str] = Field(default=None, description="注册号")
+    timestamp: Optional[datetime] = Field(default=None, description="时间戳")
+    metadata: Optional[dict] = Field(default=None, description="额外元数据")
 
 
 class ReviewRequest(BaseModel):

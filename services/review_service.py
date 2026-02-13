@@ -28,6 +28,7 @@ from app.schemas.response import (
     RegistrationResult,
     OcclusionResult,
     ViolationResult,
+    SimilarRecord,
 )
 
 logger = get_logger("review_service")
@@ -43,6 +44,7 @@ class ReviewService:
         self._detector = None
         self._ocr = None
         self._quality_assessor = None
+        self._enhanced_predictor = None  # 增强预测器（包含向量数据库）
 
     def _lazy_load_infer(self):
         """延迟加载推理模块"""
@@ -325,6 +327,51 @@ class ReviewService:
                     results.overall_pass = False
                     if results.violation.reason:
                         fail_reasons.append(results.violation.reason)
+
+            # 相似度搜索（如果启用了向量数据库）
+            if self._enhanced_predictor is not None and results.aircraft is not None:
+                try:
+                    # 保存图片到临时文件用于特征提取
+                    import tempfile
+                    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tmp:
+                        image.save(tmp, format="JPEG")
+                        tmp_path = tmp.name
+
+                    # 使用增强预测器进行搜索
+                    from pathlib import Path
+                    enhanced_result = self._enhanced_predictor.predict(
+                        image_path=tmp_path,
+                        record_id=review_id,
+                        save_to_db=True
+                    )
+
+                    # 转换相似记录
+                    results.similar_records = [
+                        SimilarRecord(
+                            id=r.id,
+                            image_path=r.image_path,
+                            similarity=r.similarity,
+                            aircraft_type=r.aircraft_type,
+                            airline=r.airline,
+                            metadata=r.metadata
+                        )
+                        for r in enhanced_result.similar_records
+                    ]
+
+                    results.is_new_class = enhanced_result.is_new_class
+                    results.new_class_score = enhanced_result.new_class_score
+
+                    # 清理临时文件
+                    import os
+                    os.unlink(tmp_path)
+
+                    logger.info(
+                        f"[{review_id}] 相似度搜索完成，"
+                        f"找到 {len(results.similar_records)} 条相似记录"
+                    )
+
+                except Exception as e:
+                    logger.error(f"[{review_id}] 相似度搜索失败: {e}")
 
             processing_time = (time.perf_counter() - start_time) * 1000
             logger.info(

@@ -93,6 +93,16 @@ class ViolationResult(BaseModel):
     reason: Optional[str] = Field(default=None, description="未通过原因")
 
 
+class SimilarRecord(BaseModel):
+    """相似记录"""
+    id: str = Field(description="记录 ID")
+    image_path: str = Field(description="图片路径")
+    similarity: float = Field(description="相似度分数")
+    aircraft_type: Optional[str] = Field(default=None, description="机型")
+    airline: Optional[str] = Field(default=None, description="航司")
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="元数据")
+
+
 class ReviewResults(BaseModel):
     """审核结果汇总"""
     overall_pass: bool = Field(description="是否通过所有审核")
@@ -103,6 +113,11 @@ class ReviewResults(BaseModel):
     )
     occlusion: Optional[OcclusionResult] = Field(default=None, description="遮挡检测结果")
     violation: Optional[ViolationResult] = Field(default=None, description="违规检测结果")
+    similar_records: Optional[List[SimilarRecord]] = Field(
+        default=None, description="相似历史记录"
+    )
+    is_new_class: Optional[bool] = Field(default=None, description="是否为新类别")
+    new_class_score: Optional[float] = Field(default=None, description="新类别分数")
 
 
 class ReviewResponse(BaseModel):

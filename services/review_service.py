@@ -392,10 +392,10 @@ class ReviewService:
                         image_path=f"memory_{review_id}",
                         aircraft_embedding=aircraft_emb,
                         airline_embedding=airline_emb,
-                        aircraft_type=results.aircraft.type_code if results.aircraft else "",
-                        airline=results.airline.airline if results.airline and hasattr(results.airline, 'airline') else "",
-                        aircraft_confidence=results.aircraft.confidence if results.aircraft else 0.0,
-                        airline_confidence=results.airline.confidence if results.airline and hasattr(results.airline, 'confidence') else 0.0,
+                        aircraft_type=results.aircraft.aircraft_type if results.aircraft else "",
+                        airline=results.aircraft.airline if results.aircraft and results.aircraft.airline else "",
+                        aircraft_confidence=results.aircraft.aircraft_type_confidence if results.aircraft and results.aircraft.aircraft_type_confidence is not None else 0.0,
+                        airline_confidence=results.aircraft.airline_confidence if results.aircraft and results.aircraft.airline_confidence is not None else 0.0,
                     )
 
                     self._enhanced_predictor.vector_db.add_record(vector_record)

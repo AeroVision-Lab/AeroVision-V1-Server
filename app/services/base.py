@@ -39,19 +39,11 @@ class BaseService:
         if image_input.startswith(("http://", "https://")):
             return BaseService._load_from_url(image_input)
 
-        # Check if it's base64
+        # Check if it's base64 with data URL prefix
         if image_input.startswith("data:image/"):
             return BaseService._load_from_base64(image_input)
 
-        # Check if it's a file path
-        try:
-            path = Path(image_input)
-            if path.exists():
-                return Image.open(path)
-        except (OSError, ValueError):
-            pass
-
-        # Try as raw base64
+        # Try as raw base64 (without data URL prefix)
         try:
             return BaseService._load_from_base64(image_input)
         except Exception:

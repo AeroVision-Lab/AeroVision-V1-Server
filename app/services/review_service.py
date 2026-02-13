@@ -198,16 +198,19 @@ class ReviewService(BaseService):
                 return await loop.run_in_executor(None, self.registration_service._recognize_batch, images)
             tasks.append(('registration', run_registration()))
 
-        # Execute tasks concurrently
+        # Execute tasks concurrently using asyncio.gather
+        task_map = {name: coro for name, coro in tasks}
+        results_list = await asyncio.gather(*task_map.values(), return_exceptions=True)
+
         results_map = {}
-        for task_name, coroutine in tasks:
-            try:
-                results_map[task_name] = await coroutine
-            except Exception as e:
+        for task_name, result in zip(task_map.keys(), results_list):
+            if isinstance(result, Exception):
                 from app.core.logging import get_logger
                 logger = get_logger("review_service")
-                logger.error(f"Failed to execute {task_name} task: {e}")
+                logger.error(f"Failed to execute {task_name} task: {result}")
                 results_map[task_name] = None
+            else:
+                results_map[task_name] = result
 
         # Extract individual results
         quality_results = results_map.get('quality')

@@ -64,7 +64,7 @@ class RegistrationService(BaseService):
         result, timing = self.measure_time(do_recognize)
         return result, timing
 
-    def recognize_batch(self, image_inputs: list[str]) -> list[dict[str, Any]]:
+    async def recognize_batch(self, image_inputs: list[str]) -> list[dict[str, Any]]:
         """
         Recognize registration numbers from multiple images.
 
@@ -74,13 +74,17 @@ class RegistrationService(BaseService):
         Returns:
             List of results with index, success status, and data/error
         """
-        images = []
-        for image_input in image_inputs:
+        import asyncio
+
+        async def load_image_async(image_input: str):
             try:
-                image = self.load_image(image_input)
-                images.append(image)
+                loop = asyncio.get_event_loop()
+                image = await loop.run_in_executor(None, lambda: self.load_image(image_input))
+                return image
             except ImageLoadError:
-                images.append(None)
+                return None
+
+        images = await asyncio.gather(*[load_image_async(img) for img in image_inputs])
 
         registration_results = self._recognize_batch(images)
 

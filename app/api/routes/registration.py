@@ -49,7 +49,7 @@ async def recognize_registration_batch(request: BatchImageInput) -> BatchRegistr
     Recognizes registration numbers from up to 50 images in a single request.
     """
     try:
-        service_results = _service.recognize_batch(request.images)
+        service_results = await _service.recognize_batch(request.images)
 
         results = [BatchRegistrationItem(**r) for r in service_results]
 

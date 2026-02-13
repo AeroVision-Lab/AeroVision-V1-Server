@@ -64,7 +64,7 @@ class QualityService(BaseService):
         result, timing = self.measure_time(do_assess)
         return result, timing
 
-    def assess_batch(self, image_inputs: list[str]) -> list[dict[str, Any]]:
+    async def assess_batch(self, image_inputs: list[str]) -> list[dict[str, Any]]:
         """
         Assess quality of multiple images.
 
@@ -74,15 +74,38 @@ class QualityService(BaseService):
         Returns:
             List of results with index, success status, and data/error
         """
-        images = []
-        for image_input in image_inputs:
-            try:
-                image = self.load_image(image_input)
-                images.append(image)
-            except ImageLoadError:
-                images.append(None)
+        import asyncio
 
-        return self._assess_batch(images)
+        async def load_image_async(image_input: str):
+            try:
+                loop = asyncio.get_event_loop()
+                image = await loop.run_in_executor(None, lambda: self.load_image(image_input))
+                return image
+            except ImageLoadError:
+                return None
+
+        images = await asyncio.gather(*[load_image_async(img) for img in image_inputs])
+
+        quality_results = self._assess_batch(images)
+
+        results = []
+        for idx, result in enumerate(quality_results):
+            if result is None:
+                results.append({
+                    "index": idx,
+                    "success": False,
+                    "data": None,
+                    "error": "Quality assessment failed"
+                })
+            else:
+                results.append({
+                    "index": idx,
+                    "success": True,
+                    "data": result.model_dump(by_alias=True),
+                    "error": None
+                })
+
+        return results
 
     def _assess_batch(self, images: list[Image.Image | None]) -> list[QualityResult]:
         """

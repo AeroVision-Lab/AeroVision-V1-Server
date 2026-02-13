@@ -52,7 +52,7 @@ async def assess_quality_batch(request: BatchImageInput) -> BatchQualityResponse
     """
     try:
         start_time = datetime.utcnow()
-        service_results = _service.assess_batch(request.images)
+        service_results = await _service.assess_batch(request.images)
 
         results = [
             BatchQualityItem(**r)

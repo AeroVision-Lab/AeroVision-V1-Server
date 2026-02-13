@@ -43,80 +43,103 @@ async def push_historical_records(
                 detail="向量数据库功能未启用"
             )
 
-        # 确保增强预测器已加载
-        if not hasattr(review_service, '_predictor') or review_service._predictor is None:
-            try:
-                from aerovision_inference import ModelPredictor
-                import torch
-
-                device = 'cuda' if torch.cuda.is_available() else 'cpu'
-                model_dir = settings.model_dir if hasattr(settings, 'model_dir') else 'models'
-
-                config = {
-                    'aircraft': {
-                        'path': str(Path(model_dir) / 'aircraft.pt'),
-                        'device': device,
-                        'image_size': 640
-                    },
-                    'airline': {
-                        'path': str(Path(model_dir) / 'airline.pt'),
-                        'device': device,
-                        'image_size': 640
-                    }
-                }
-
-                review_service._predictor = ModelPredictor(config)
-                logger.info("模型预测器初始化完成")
-            except Exception as e:
-                logger.error(f"初始化模型预测器失败: {e}")
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"无法初始化特征提取模型: {str(e)}"
-                )
-
         # 转换为 VectorRecord 并添加到数据库
         from aerovision_inference import VectorRecord
+        from app.services.base import BaseService
+        from PIL import Image
 
         added_count = 0
         failed_count = 0
 
         for record in records:
             try:
-                # 从图片路径加载图片并提取特征向量
-                image_path = record.image_path
+                # 加载图片：优先使用 image_data (base64)，其次使用 image_url
+                image = None
+                image_input = None
 
-                if not Path(image_path).exists():
-                    logger.warning(f"图片路径不存在: {image_path}，跳过此记录")
+                # Check for base64 image data in metadata or use image_url
+                if record.metadata and 'image_data' in record.metadata:
+                    image_input = record.metadata['image_data']
+                elif record.image_url:
+                    image_input = record.image_url
+                else:
+                    logger.warning(f"记录 {record.id} 缺少图片数据，跳过此记录")
                     failed_count += 1
                     continue
 
+                # Load image using BaseService (now only supports base64 and URL)
+                try:
+                    image = BaseService.load_image(image_input)
+                except Exception as load_error:
+                    logger.error(f"加载图片失败 {record.id}: {load_error}")
+                    failed_count += 1
+                    continue
+
+                # 确保有可用的预测器
+                predictor = getattr(review_service._enhanced_predictor, 'predictor', None)
+                if predictor is None:
+                    # Lazy load predictor if not available
+                    try:
+                        from aerovision_inference import ModelPredictor
+                        import torch
+
+                        device = 'cuda' if torch.cuda.is_available() else 'cpu'
+                        model_dir = settings.model_dir if hasattr(settings, 'model_dir') else 'models'
+
+                        config = {
+                            'aircraft': {
+                                'path': str(Path(model_dir) / 'aircraft.pt'),
+                                'device': device,
+                                'image_size': 640
+                            },
+                            'airline': {
+                                'path': str(Path(model_dir) / 'airline.pt'),
+                                'device': device,
+                                'image_size': 640
+                            }
+                        }
+
+                        predictor = ModelPredictor(config)
+                        review_service._enhanced_predictor.predictor = predictor
+                        logger.info("模型预测器初始化完成")
+                    except Exception as e:
+                        logger.error(f"初始化模型预测器失败: {e}")
+                        raise HTTPException(
+                            status_code=503,
+                            detail=f"无法初始化特征提取模型: {str(e)}"
+                        )
+
                 # 使用 YOLO 的 embed 方法提取特征向量
                 try:
-                    aircraft_emb_result = review_service._predictor.aircraft_model.embed(
-                        image_path,
-                        imgsz=640,
-                        device=review_service._predictor.device,
-                        verbose=False
-                    )
+                    img_array = np.array(image)
 
-                    airline_emb_result = review_service._predictor.airline_model.embed(
-                        image_path,
+                    aircraft_emb_tensor = predictor.aircraft_model.embed(
+                        img_array,
                         imgsz=640,
-                        device=review_service._predictor.device,
+                        device=predictor.device,
                         verbose=False
-                    )
+                    )[0]
+
+                    airline_emb_tensor = predictor.airline_model.embed(
+                        img_array,
+                        imgsz=640,
+                        device=predictor.device,
+                        verbose=False
+                    )[0]
 
                     # 转换为 numpy 数组并扁平化
-                    aircraft_emb = aircraft_emb_result[0]
-                    airline_emb = airline_emb_result[0]
+                    if hasattr(aircraft_emb_tensor, 'cpu'):
+                        aircraft_emb = aircraft_emb_tensor.cpu().numpy()
+                    else:
+                        aircraft_emb = np.array(aircraft_emb_tensor)
 
-                    if hasattr(aircraft_emb, 'cpu'):
-                        aircraft_emb = aircraft_emb.cpu().numpy()
-                    if hasattr(airline_emb, 'cpu'):
-                        airline_emb = airline_emb.cpu().numpy()
+                    if hasattr(airline_emb_tensor, 'cpu'):
+                        airline_emb = airline_emb_tensor.cpu().numpy()
+                    else:
+                        airline_emb = np.array(airline_emb_tensor)
 
-                    aircraft_emb = np.array(aircraft_emb).flatten()
-                    airline_emb = np.array(airline_emb).flatten()
+                    aircraft_emb = aircraft_emb.flatten()
+                    airline_emb = airline_emb.flatten()
 
                 except Exception as embed_error:
                     logger.error(f"特征提取失败 {record.id}: {embed_error}")
@@ -125,7 +148,7 @@ async def push_historical_records(
 
                 vector_record = VectorRecord(
                     id=record.id,
-                    image_path=record.image_path,
+                    image_path=record.image_url or f"metadata_{record.id}",
                     aircraft_embedding=aircraft_emb,
                     airline_embedding=airline_emb,
                     aircraft_type=record.aircraft_type,

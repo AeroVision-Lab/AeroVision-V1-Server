@@ -1,0 +1,20 @@
+# Core dependencies
+fastapi>=0.104.1
+uvicorn[standard]>=0.24.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+python-dotenv>=1.0.0
+
+# HTTP client
+httpx>=0.25.0
+
+# Image processing
+pillow>=10.1.0
+numpy>=1.24.0
+
+# Logging
+python-json-logger>=2.0.0
+
+# Inference dependency
+# Assuming aerovision_inference is installed locally or from path
+# -e ../../Aerovision-inference

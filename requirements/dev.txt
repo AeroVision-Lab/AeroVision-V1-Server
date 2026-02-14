@@ -1,0 +1,10 @@
+-r test.txt
+
+# Development
+black>=23.0.0
+ruff>=0.1.0
+mypy>=1.7.0
+pre-commit>=3.5.0
+
+# Debugging
+ipython>=8.17.0

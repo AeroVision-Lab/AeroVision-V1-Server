@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     noise_weight: float = 0.2
     color_weight: float = 0.15
 
+    # New class detection
+    new_class_similarity_threshold: float = 0.7
+
     # Limits
     max_image_size_mb: int = 20
     max_batch_size: int = 50

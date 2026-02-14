@@ -86,7 +86,8 @@ class QualityService(BaseService):
 
         images = await asyncio.gather(*[load_image_async(img) for img in image_inputs])
 
-        quality_results = self._assess_batch(images)
+        loop = asyncio.get_event_loop()
+        quality_results = await loop.run_in_executor(None, self._assess_batch, images)
 
         results = []
         for idx, result in enumerate(quality_results):

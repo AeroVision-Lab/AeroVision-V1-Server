@@ -13,11 +13,14 @@ from app.schemas.aircraft import AircraftResult
 from app.schemas.airline import AirlineResult
 from app.schemas.registration import RegistrationResult
 from app.core.exceptions import ImageLoadError
+from app.core.logging import get_logger
 from app.services.quality_service import QualityService
 from app.services.aircraft_service import AircraftService
 from app.services.airline_service import AirlineService
 from app.services.registration_service import RegistrationService
 from app.services.base import BaseService
+
+logger = get_logger("review_service")
 
 
 class ReviewService(BaseService):
@@ -205,8 +208,6 @@ class ReviewService(BaseService):
         results_map = {}
         for task_name, result in zip(task_map.keys(), results_list):
             if isinstance(result, Exception):
-                from app.core.logging import get_logger
-                logger = get_logger("review_service")
                 logger.error(f"Failed to execute {task_name} task: {result}")
                 results_map[task_name] = None
             else:

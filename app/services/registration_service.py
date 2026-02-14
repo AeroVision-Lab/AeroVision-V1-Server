@@ -86,7 +86,8 @@ class RegistrationService(BaseService):
 
         images = await asyncio.gather(*[load_image_async(img) for img in image_inputs])
 
-        registration_results = self._recognize_batch(images)
+        loop = asyncio.get_event_loop()
+        registration_results = await loop.run_in_executor(None, self._recognize_batch, images)
 
         results = []
         for idx, result in enumerate(registration_results):

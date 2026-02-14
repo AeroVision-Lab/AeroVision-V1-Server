@@ -121,8 +121,8 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/history/push` | Push historical audit records to vector database |
-| `GET` | `/api/history/stats` | Get vector database statistics |
+| `POST` | `/api/v1/history/push` | Push historical audit records to vector database |
+| `GET` | `/api/v1/history/stats` | Get vector database statistics |
 
 ### Atomic APIs
 
@@ -156,7 +156,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ### Push Historical Records
 
 ```bash
-curl -X POST "http://localhost:8000/api/history/push" \
+curl -X POST "http://localhost:8000/api/v1/history/push" \
   -H "Content-Type: application/json" \
   -d '{
     "records": [
@@ -189,7 +189,7 @@ curl -X POST "http://localhost:8000/api/history/push" \
 ### Get Historical Record Statistics
 
 ```bash
-curl -X GET "http://localhost:8000/api/history/stats"
+curl -X GET "http://localhost:8000/api/v1/history/stats"
 ```
 
 **Response**:

@@ -15,7 +15,7 @@ services:
     container_name: aerovision-v1-server
 
     ports:
-      - "${PORT:-8000}:8000"
+      - "${PORT:-8002}:8000"
 
     volumes:
       - ${MODEL_DIR:-./models}:/app/models:ro

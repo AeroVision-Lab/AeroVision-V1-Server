@@ -18,6 +18,15 @@ python-json-logger>=2.0.0
 # Redis
 redis>=5.0.0
 
+# Deep learning frameworks for inference
+ultralytics>=8.0.0
+paddleocr>=2.7.0
+paddlepaddle>=2.6.0
+
+# Additional inference dependencies
+faiss-cpu>=1.7.4
+hdbscan>=0.8.0
+
 # Inference dependency
 # Assuming aerovision_inference is installed locally or from path
 # -e ../../Aerovision-inference

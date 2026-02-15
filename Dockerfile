@@ -11,7 +11,7 @@ ARG CUDA_VERSION=12.1
 ARG PYTHON_VERSION=3.12
 
 # ==================== 基础镜像选择 ====================
-FROM nvidia/cuda:${CUDA_VERSION}.0-cudnn9-runtime-ubuntu22.04 AS base-gpu
+FROM nvidia/cuda:12.1.0-cudnn8-runtime-ubuntu22.04 AS base-gpu
 FROM python:${PYTHON_VERSION}-slim AS base-cpu
 
 # 根据 DEVICE 参数选择基础镜像
@@ -97,6 +97,17 @@ RUN if [ "$DEVICE" = "gpu" ]; then \
 
 # 安装其他依赖
 RUN pip install --no-cache-dir -r requirements.txt
+
+# 安装 Aerovision-V1-inference whl 包
+# 注意：请确保在构建镜像前，已将 Aerovision-V1-inference/dist/aerovision_inference-1.0.0-py3-none-any.whl 复制到项目根目录
+COPY aerovision_inference-1.0.0-py3-none-any.whl ./
+RUN pip install --no-cache-dir ./aerovision_inference-1.0.0-py3-none-any.whl
+
+# 安装推理包的额外依赖（不包含已在主requirements.txt中的依赖）
+RUN pip install --no-cache-dir faiss-cpu hdbscan
+
+# 设置PYTHONPATH
+ENV PYTHONPATH="/app:$PYTHONPATH"
 
 # 复制应用代码
 COPY app/ ./app/

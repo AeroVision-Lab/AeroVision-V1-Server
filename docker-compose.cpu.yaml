@@ -4,6 +4,23 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7.0-alpine
+    container_name: aerovision-redis-cpu
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - aerovision-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   aerovision-server:
     build:
       context: .
@@ -12,12 +29,15 @@ services:
         DEVICE: cpu
     image: aerovision-server:cpu
     container_name: aerovision-v1-server-cpu
+    depends_on:
+      redis:
+        condition: service_healthy
 
     ports:
       - "${PORT:-8001}:8000"
 
     volumes:
-      - ${MODEL_DIR:-./models}:/app/models:ro
+      - ${MODEL_DIR:-./models}:/app/models
       - ./logs:/app/logs
 
     environment:
@@ -53,6 +73,10 @@ services:
       - OPENBLAS_NUM_THREADS=${CPU_THREADS:-4}
       - TORCH_NUM_THREADS=${CPU_THREADS:-4}
 
+      # Redis 配置
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_ENABLED=true
+
     deploy:
       resources:
         limits:
@@ -77,6 +101,9 @@ services:
 
     networks:
       - aerovision-network
+
+volumes:
+  redis-data:
 
 networks:
   aerovision-network:

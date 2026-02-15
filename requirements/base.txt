@@ -15,6 +15,9 @@ numpy>=1.24.0
 # Logging
 python-json-logger>=2.0.0
 
+# Redis
+redis>=5.0.0
+
 # Inference dependency
 # Assuming aerovision_inference is installed locally or from path
 # -e ../../Aerovision-inference

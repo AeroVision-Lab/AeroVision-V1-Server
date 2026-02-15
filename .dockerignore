@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# 虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 测试和覆盖率
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# 数据文件
+*.db
+*.log
+
+# Git
+.git/
+.gitignore
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 文档
+README.md
+LICENSE
+
+# 日志目录
+logs/
+
+# 模型文件（从宿主机挂载）
+models/
+
+# 覆盖率报告
+htmlcov/
+.coverage
+
+# 临时文件
+*.tmp
+*.temp

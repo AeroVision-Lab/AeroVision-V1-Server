@@ -120,21 +120,15 @@ class RegistrationService(BaseService):
         """
         results = [None] * len(images)
 
-        with ThreadPoolExecutor() as executor:
-            def recognize_with_index(idx, image):
-                if image is None:
-                    return idx, None
-                try:
-                    result, _ = self._recognize_image(image)
-                    return idx, result
-                except Exception as e:
-                    logger.error(f"Failed to recognize image at index {idx}: {e}")
-                    return idx, None
-
-            futures = [executor.submit(recognize_with_index, idx, img) for idx, img in enumerate(images)]
-
-            for future in futures:
-                idx, result = future.result()
-                results[idx] = result
+        for i, image in enumerate(images):
+            if image is None:
+                results[i] = None
+                continue
+            try:
+                result, _ = self._recognize_image(image)
+                results[i] = result
+            except Exception as e:
+                logger.error(f"Failed to recognize image at index {i}: {e}")
+                results[i] = None
 
         return results

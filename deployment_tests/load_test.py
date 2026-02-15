@@ -206,7 +206,8 @@ async def main():
         base_url = "http://localhost:8001"
         print("Testing CPU version at http://localhost:8001")
     elif args.gpu:
-        print("Testing GPU version at http://localhost:8000")
+        base_url = "http://localhost:8002"
+        print("Testing GPU version at http://localhost:8002")
     else:
         print(f"Testing API at {base_url}")
 

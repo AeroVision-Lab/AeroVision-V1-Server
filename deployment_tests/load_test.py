@@ -17,9 +17,16 @@ import argparse
 
 
 class AeroVisionLoadTester:
-    def __init__(self, base_url: str = "http://localhost:8000", test_data_dir: str = "/home/wlx/Aerovision-V1/data/labeled"):
+    def __init__(self, base_url: str = "http://localhost:8000", test_data_dir: str = None):
+        """
+        Initialize load tester.
+        
+        Args:
+            base_url: API base URL
+            test_data_dir: Directory containing test images (defaults to /home/wlx/Aerovision-V1/data/labeled)
+        """
         self.base_url = base_url
-        self.test_data_dir = test_data_dir
+        self.test_data_dir = test_data_dir or "/home/wlx/Aerovision-V1/data/labeled"
         self.test_images = self._get_test_images(max_images=100)
         self.results = []
 
@@ -191,6 +198,7 @@ async def main():
     parser.add_argument("--cpu", action="store_true", help="Testing CPU version")
     parser.add_argument("--gpu", action="store_true", help="Testing GPU version")
     parser.add_argument("--duration", type=int, default=30, help="Duration per concurrency level in seconds")
+    parser.add_argument("--data-dir", help="Test data directory with images (default: /home/wlx/Aerovision-V1/data/labeled)")
     args = parser.parse_args()
 
     base_url = args.url
@@ -202,7 +210,7 @@ async def main():
     else:
         print(f"Testing API at {base_url}")
 
-    tester = AeroVisionLoadTester(base_url=base_url)
+    tester = AeroVisionLoadTester(base_url=base_url, test_data_dir=args.data_dir)
     await tester.run_stepped_load_test(duration_per_level=args.duration)
     tester.save_results(f"load_test_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
 

@@ -14,6 +14,9 @@ from collections import defaultdict
 from typing import Dict, List, Tuple
 import requests
 
+# Import ICAO code mapping
+from icao_to_fullname_mapping import get_fullname
+
 
 class AccuracyTester:
     """模型效果测试器"""
@@ -51,6 +54,9 @@ class AccuracyTester:
             img_data = f.read()
         base64_img = base64.b64encode(img_data).decode()
 
+        # 将 ICAO 代码转换为完整名称以匹配模型输出
+        expected_fullname = get_fullname(ground_truth)
+
         # 发送API请求
         start_time = time.time()
         try:
@@ -70,11 +76,12 @@ class AccuracyTester:
                 return {
                     'success': True,
                     'ground_truth': ground_truth,
+                    'expected_fullname': expected_fullname,
                     'top1_prediction': top1_pred,
                     'top1_confidence': top1_conf,
                     'top5_predictions': predictions,
-                    'top1_correct': top1_pred == ground_truth,
-                    'top5_correct': ground_truth in predictions,
+                    'top1_correct': top1_pred == expected_fullname,
+                    'top5_correct': expected_fullname in predictions,
                     'latency_ms': duration,
                     'image': image_path.name
                 }

@@ -18,7 +18,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 # 导入 DashScope API 客户端
-sys.path.insert(0, str(Path('/home/wlx/Aerovision-V1-inference')))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'Aerovision-V1-inference'))
 
 logging.basicConfig(
     level=logging.INFO,

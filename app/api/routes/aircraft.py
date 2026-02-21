@@ -24,7 +24,7 @@ _service = AircraftService()
 @router.post("", response_model=AircraftResponse, status_code=status.HTTP_200_OK)
 async def classify_aircraft(
     request: ImageInput,
-    top_k: Annotated[int | None, Query(gt=0, le=20, description="Number of top predictions")] = None
+    top_k: Annotated[int | None, Query(gt=0, le=20, description="Number of top predictions")] = 5
 ) -> AircraftResponse:
     """
     Classify aircraft type.

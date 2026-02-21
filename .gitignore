@@ -45,3 +45,12 @@ models/*.pt
 models/*.pth
 models/*.onnx
 models/*.engine
+
+# Deployment test results
+deployment_tests/results/*.json
+results/*.json
+load_test_results_*.json
+deployment_tests/*.json
+
+# Aerovision-V1-inference (闭源代码库，应打包为whl)
+Aerovision-V1-inference/

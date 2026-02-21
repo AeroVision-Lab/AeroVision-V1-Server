@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Deployment tests (not needed in production image)
+deployment_tests/
+
+# Data files
+*.db
+*.log
+
+# Git
+.git/
+.gitignore
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation
+README.md
+LICENSE
+
+# Logs
+logs/
+
+# Models (will be mounted)
+models/
+
+# Coverage reports
+htmlcov/
+.coverage
+
+# Temporary files
+*.tmp
+*.temp
+
+# Closed-source inference library (should use whl package instead)
+Aerovision-V1-inference/

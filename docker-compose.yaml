@@ -1,0 +1,85 @@
+# AeroVision V1 Server - Docker Compose (GPU 版本)
+# 使用方法: docker-compose up -d
+
+version: '3.8'
+
+services:
+  aerovision-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DEVICE: gpu
+        CUDA_VERSION: "12.1"
+    image: aerovision-server:gpu
+    container_name: aerovision-v1-server
+
+    ports:
+      - "${PORT:-8002}:8000"
+
+    volumes:
+      - ${MODEL_DIR:-./models}:/app/models:ro
+      - ./logs:/app/logs
+
+    environment:
+      # 模型配置
+      - MODEL_DIR=/app/models
+      - DEVICE=${DEVICE:-cuda}
+      - PRELOAD_MODELS=${PRELOAD_MODELS:-true}
+
+      # OCR 配置
+      - OCR_MODE=${OCR_MODE:-local}
+      - OCR_LANG=${OCR_LANG:-ch}
+      - USE_ANGLE_CLS=${USE_ANGLE_CLS:-true}
+
+      # 服务配置
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORKERS=${WORKERS:-1}
+      - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+
+      # 日志配置
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+
+      # CORS 配置
+      - CORS_ORIGINS=["*"]
+      - CORS_METHODS=["GET","POST","OPTIONS"]
+      - CORS_HEADERS=["*"]
+
+    # GPU 支持
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+        limits:
+          cpus: '${CPU_LIMIT:-4.0}'
+          memory: ${MEMORY_LIMIT:-8G}
+
+    shm_size: '2gb'
+    restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+    networks:
+      - aerovision-network
+
+networks:
+  aerovision-network:
+    driver: bridge

@@ -1,0 +1,110 @@
+# AeroVision V1 Server - Docker Compose (CPU 版本)
+# 使用方法: docker-compose -f docker-compose.cpu.yaml up -d
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.0-alpine
+    container_name: aerovision-redis-cpu
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    networks:
+      - aerovision-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  aerovision-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DEVICE: cpu
+    image: aerovision-server:cpu
+    container_name: aerovision-v1-server-cpu
+    depends_on:
+      redis:
+        condition: service_healthy
+
+    ports:
+      - "${PORT:-8001}:8000"
+
+    volumes:
+      - ${MODEL_DIR:-./models}:/app/models
+      - ./logs:/app/logs
+
+    environment:
+      # 模型配置
+      - MODEL_DIR=/app/models
+      - DEVICE=cpu
+      - PRELOAD_MODELS=${PRELOAD_MODELS:-true}
+
+      # OCR 配置
+      - OCR_MODE=${OCR_MODE:-local}
+      - OCR_LANG=${OCR_LANG:-ch}
+      - USE_ANGLE_CLS=${USE_ANGLE_CLS:-true}
+
+      # 服务配置
+      - HOST=0.0.0.0
+      - PORT=8000
+      - WORKERS=${WORKERS:-1}
+      - DEBUG=${DEBUG:-false}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+
+      # 日志配置
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FORMAT=${LOG_FORMAT:-json}
+
+      # CORS 配置
+      - CORS_ORIGINS=["*"]
+      - CORS_METHODS=["GET","POST","OPTIONS"]
+      - CORS_HEADERS=["*"]
+
+      # CPU 线程配置
+      - OMP_NUM_THREADS=${CPU_THREADS:-4}
+      - MKL_NUM_THREADS=${CPU_THREADS:-4}
+      - OPENBLAS_NUM_THREADS=${CPU_THREADS:-4}
+      - TORCH_NUM_THREADS=${CPU_THREADS:-4}
+
+      # Redis 配置
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_ENABLED=true
+
+    deploy:
+      resources:
+        limits:
+          cpus: '${CPU_LIMIT:-4.0}'
+          memory: ${MEMORY_LIMIT:-8G}
+
+    shm_size: '2gb'
+    restart: unless-stopped
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+    networks:
+      - aerovision-network
+
+volumes:
+  redis-data:
+
+networks:
+  aerovision-network:
+    driver: bridge

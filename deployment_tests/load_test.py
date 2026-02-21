@@ -26,7 +26,7 @@ class AeroVisionLoadTester:
             test_data_dir: Directory containing test images (defaults to /home/wlx/Aerovision-V1/data/labeled)
         """
         self.base_url = base_url
-        self.test_data_dir = test_data_dir or "/home/wlx/Aerovision-V1/data/labeled"
+        self.test_data_dir = test_data_dir or "../data/labeled"
         self.test_images = self._get_test_images(max_images=100)
         self.results = []
 

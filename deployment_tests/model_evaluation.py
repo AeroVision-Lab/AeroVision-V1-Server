@@ -31,7 +31,7 @@ class AeroVisionModelEvaluator:
             test_data_dir: Test data directory containing images with ICAO codes in filenames
         """
         self.base_url = base_url
-        self.test_data_dir = test_data_dir or "/home/wlx/Aerovision-V1/data/labeled"
+        self.test_data_dir = test_data_dir or "../data/labeled"
         self.results = {
             "aircraft": {},
             "airline": {},

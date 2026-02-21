@@ -19,7 +19,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 
 # 动态导入 registration_ocr
-aerovision_inference_path = Path('/home/wlx/Aerovision-V1-inference')
+aerovision_inference_path = Path(__file__).parent.parent.parent / 'Aerovision-V1-inference'
 registration_ocr_path = aerovision_inference_path / 'registration_ocr.py'
 
 spec = importlib.util.spec_from_file_location('registration_ocr', str(registration_ocr_path))

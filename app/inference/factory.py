@@ -158,12 +158,16 @@ class InferenceFactory:
                     ocr_mode = settings.ocr_mode
                     ocr_lang = settings.ocr_lang
                     use_angle_cls = settings.use_angle_cls
+                    qwen_model = settings.qwen_model
+                    ocr_timeout = settings.ocr_timeout
 
                     logger.info(f"Loading registration OCR in {ocr_mode} mode")
                     cls._registration_ocr = RegistrationOCR(
                         mode=ocr_mode,
                         lang=ocr_lang,
                         use_angle_cls=use_angle_cls,
+                        qwen_model=qwen_model,
+                        timeout=ocr_timeout,
                         enabled=True
                     )
                     logger.info("Registration OCR loaded successfully")

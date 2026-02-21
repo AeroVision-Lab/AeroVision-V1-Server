@@ -42,9 +42,11 @@ class Settings(BaseSettings):
     preload_models: bool = True
 
     # OCR
-    ocr_mode: str = "local"
+    ocr_mode: str = "auto"
     ocr_lang: str = "ch"
     use_angle_cls: bool = True
+    qwen_model: str = "qwen3-vl-flash"
+    ocr_timeout: int = 30
 
     # Quality thresholds
     quality_pass_threshold: float = 0.6

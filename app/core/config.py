@@ -2,11 +2,25 @@
 Configuration management for Aerovision-V1-Server.
 """
 
+import json
 import os
 from pathlib import Path
 from typing import Literal
 
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class QwenServiceConfig(BaseModel):
+    """Configuration for a single Qwen service endpoint."""
+
+    name: str = Field(..., description="Service name, e.g. 'primary', 'aliyun'")
+    url: str = Field(..., description="API endpoint URL")
+    model: str = Field(..., description="Model name")
+    api_key: str = Field(default="", description="API key (optional for local service)")
+    timeout: int = Field(default=30, ge=1, le=300, description="Request timeout in seconds")
+    enabled: bool = Field(default=True, description="Whether this service is enabled")
+    priority: int = Field(default=0, ge=0, description="Priority order (lower = higher priority)")
 
 
 class Settings(BaseSettings):
@@ -47,6 +61,36 @@ class Settings(BaseSettings):
     use_angle_cls: bool = True
     qwen_model: str = "qwen3-vl-flash"
     ocr_timeout: int = 30
+
+    # Quality Assessment
+    quality_mode: Literal["opencv", "qwen", "hybrid"] = "hybrid"
+
+    # Qwen services list — JSON string, parsed via property below.
+    # Format: [{"name": "primary", "url": "...", "model": "...", ...}, ...]
+    # Default: single local service, no API key required.
+    qwen_services_json: str = Field(
+        default='[{"name":"primary","url":"http://localhost:8001/v1/chat/completions","model":"qwen3.5-122b","timeout":30,"enabled":true,"priority":0}]',
+        description="JSON array of Qwen service configs"
+    )
+
+    @property
+    def qwen_services(self) -> list[QwenServiceConfig]:
+        """Parse and return the sorted list of enabled Qwen services."""
+        try:
+            raw = json.loads(self.qwen_services_json)
+            services = [QwenServiceConfig(**s) for s in raw]
+        except Exception:
+            services = [
+                QwenServiceConfig(
+                    name="primary",
+                    url="http://localhost:8001/v1/chat/completions",
+                    model="qwen3.5-122b",
+                    timeout=30,
+                    enabled=True,
+                    priority=0,
+                )
+            ]
+        return sorted([s for s in services if s.enabled], key=lambda s: s.priority)
 
     # Quality thresholds
     quality_pass_threshold: float = 0.6

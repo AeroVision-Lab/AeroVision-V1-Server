@@ -94,6 +94,25 @@ class BaseService:
             raise
 
     @staticmethod
+    async def measure_time_async(coro) -> tuple[Any, float]:
+        """
+        Measure execution time of an async coroutine.
+
+        Args:
+            coro: Coroutine to execute
+
+        Returns:
+            Tuple of (result, execution_time_ms)
+        """
+        start_time = time.perf_counter()
+        try:
+            result = await coro
+            return result, (time.perf_counter() - start_time) * 1000
+        except Exception as e:
+            logger.error(f"Error in async execution: {e}")
+            raise
+
+    @staticmethod
     def safe_execute(func, *args, default=None, **kwargs) -> Any:
         """
         Safely execute a function, returning default on error.

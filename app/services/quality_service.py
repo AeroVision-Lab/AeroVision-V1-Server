@@ -1,53 +1,71 @@
 """
 Quality assessment service.
+
+Supports three modes (configured via QUALITY_MODE env var):
+- opencv: Fast classical CV metrics only
+- qwen: Semantic VLM analysis only
+- hybrid: Both in parallel (default)
 """
 
-from concurrent.futures import ThreadPoolExecutor
+import asyncio
 from typing import Any
 
 from PIL import Image
 
-from app.core.exceptions import ImageLoadError
-from app.core import get_logger
-from app.inference import InferenceFactory, wrap_quality_result
+from app.core import get_logger, get_settings
 from app.schemas.quality import QualityResult
 from app.services.base import BaseService
+from app.services.quality import HybridAssessor, OpenCVDetector, QwenDetector
+from app.services.quality.result_merger import merge_results
 
 logger = get_logger("services.quality")
 
 
 class QualityService(BaseService):
-    """Service for image quality assessment."""
+    """Service for image quality assessment with mode-based routing."""
 
     def __init__(self):
         """Initialize the quality service."""
-        self._assessor = None
+        self._settings = get_settings()
+        self._opencv_detector: OpenCVDetector | None = None
+        self._qwen_detector: QwenDetector | None = None
+        self._hybrid_assessor: HybridAssessor | None = None
 
-    def _get_assessor(self):
-        """Lazy load the quality assessor."""
-        if self._assessor is None:
-            self._assessor = InferenceFactory.get_quality_assessor()
-        return self._assessor
+    def _get_opencv_detector(self) -> OpenCVDetector:
+        """Lazy load OpenCV detector."""
+        if self._opencv_detector is None:
+            self._opencv_detector = OpenCVDetector()
+        return self._opencv_detector
 
-    def assess(self, image_input: str) -> tuple[QualityResult, float]:
+    def _get_qwen_detector(self) -> QwenDetector:
+        """Lazy load Qwen detector."""
+        if self._qwen_detector is None:
+            self._qwen_detector = QwenDetector()
+        return self._qwen_detector
+
+    def _get_hybrid_assessor(self) -> HybridAssessor:
+        """Lazy load hybrid assessor."""
+        if self._hybrid_assessor is None:
+            self._hybrid_assessor = HybridAssessor()
+        return self._hybrid_assessor
+
+    async def assess(self, image_input: str) -> tuple[QualityResult, float]:
         """
-        Assess image quality.
+        Assess image quality using the configured mode.
 
         Args:
             image_input: Base64 encoded image or URL
 
         Returns:
             Tuple of (quality result, processing time ms)
-
-        Raises:
-            ImageLoadError: If image loading fails
         """
-        image = self.load_image(image_input)
-        return self._assess_image(image)
+        loop = asyncio.get_event_loop()
+        image = await loop.run_in_executor(None, self.load_image, image_input)
+        return await self._assess_image(image)
 
-    def _assess_image(self, image: Image.Image) -> tuple[QualityResult, float]:
+    async def _assess_image(self, image: Image.Image) -> tuple[QualityResult, float]:
         """
-        Assess quality of a pre-loaded image.
+        Assess quality of a pre-loaded image based on quality_mode.
 
         Args:
             image: PIL Image object
@@ -55,14 +73,88 @@ class QualityService(BaseService):
         Returns:
             Tuple of (quality result, processing time ms)
         """
-        assessor = self._get_assessor()
+        mode = self._settings.quality_mode
+        logger.info("Running quality assessment in '%s' mode", mode)
 
-        def do_assess():
-            result = assessor.assess(image)
-            return wrap_quality_result(result)
+        async def do_assess() -> QualityResult:
+            if mode == "opencv":
+                # OpenCV only - run in thread pool
+                loop = asyncio.get_event_loop()
+                opencv_result = await loop.run_in_executor(
+                    None, self._get_opencv_detector().detect, image
+                )
+                # Convert OpenCVResult to QualityResult
+                return self._opencv_to_quality_result(opencv_result)
 
-        result, timing = self.measure_time(do_assess)
+            elif mode == "qwen":
+                # Qwen only
+                qwen_result = await self._get_qwen_detector().detect(image)
+                # Convert QwenResult to QualityResult
+                return self._qwen_to_quality_result(qwen_result)
+
+            else:  # hybrid
+                # Both in parallel
+                return await self._get_hybrid_assessor().assess(image)
+
+        result, timing = await self.measure_time_async(do_assess)
         return result, timing
+
+    def _opencv_to_quality_result(self, opencv_result) -> QualityResult:
+        """Convert OpenCVResult to QualityResult (opencv-only mode)."""
+        from app.services.quality.opencv_detector import OpenCVResult
+
+        # Calculate overall score from OpenCV dimensions
+        scores = [
+            opencv_result.sharpness_score,
+            opencv_result.noise_score,
+            opencv_result.contrast_score,
+            opencv_result.exposure_score,
+            opencv_result.color_score,
+            opencv_result.horizon_score,
+            opencv_result.vignetting_score,
+            opencv_result.haze_score,
+            opencv_result.purple_fringe_score,
+        ]
+        overall_score = sum(scores) / len(scores)
+
+        # Determine pass/fail
+        has_critical = any(v.severity == "critical" for v in opencv_result.violations)
+        pass_ = overall_score >= self._settings.quality_pass_threshold and not has_critical
+
+        return QualityResult.model_validate({
+            "pass": pass_,
+            "score": round(overall_score, 3),
+            "violations": opencv_result.violations,
+            "details": opencv_result.dimension_scores,
+            "suggestions": [],
+        })
+
+    def _qwen_to_quality_result(self, qwen_result) -> QualityResult:
+        """Convert QwenResult to QualityResult (qwen-only mode)."""
+        from app.services.quality.qwen_detector import QwenResult
+
+        # Calculate score based on violations
+        score = 1.0
+        for violation in qwen_result.violations:
+            if violation.severity == "critical":
+                score -= 0.30 * violation.confidence
+            elif violation.severity == "major":
+                score -= 0.15 * violation.confidence
+            elif violation.severity == "minor":
+                score -= 0.05 * violation.confidence
+        score = max(0.0, score)
+
+        # Determine pass/fail
+        has_critical = any(v.severity == "critical" for v in qwen_result.violations)
+        pass_ = score >= self._settings.quality_pass_threshold and not has_critical
+
+        return QualityResult.model_validate({
+            "pass": pass_,
+            "score": round(score, 3),
+            "violations": qwen_result.violations,
+            "details": None,
+            "suggestions": qwen_result.suggestions,
+        })
 
     async def assess_batch(self, image_inputs: list[str]) -> list[dict[str, Any]]:
         """
@@ -74,24 +166,31 @@ class QualityService(BaseService):
         Returns:
             List of results with index, success status, and data/error
         """
-        import asyncio
-
+        # Load all images in parallel
         async def load_image_async(image_input: str):
             try:
                 loop = asyncio.get_event_loop()
-                image = await loop.run_in_executor(None, lambda: self.load_image(image_input))
+                image = await loop.run_in_executor(None, self.load_image, image_input)
                 return image
-            except ImageLoadError:
+            except Exception:
                 return None
 
         images = await asyncio.gather(*[load_image_async(img) for img in image_inputs])
 
-        loop = asyncio.get_event_loop()
-        quality_results = await loop.run_in_executor(None, self._assess_batch, images)
+        # Assess all images in parallel
+        tasks = []
+        for image in images:
+            if image is None:
+                tasks.append(asyncio.create_task(asyncio.sleep(0, result=None)))
+            else:
+                tasks.append(asyncio.create_task(self._assess_image(image)))
 
+        quality_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+        # Format results
         results = []
         for idx, result in enumerate(quality_results):
-            if result is None:
+            if result is None or isinstance(result, Exception):
                 results.append({
                     "index": idx,
                     "success": False,
@@ -99,36 +198,12 @@ class QualityService(BaseService):
                     "error": "Quality assessment failed"
                 })
             else:
+                quality_result, _ = result  # unpack (QualityResult, timing)
                 results.append({
                     "index": idx,
                     "success": True,
-                    "data": result.model_dump(by_alias=True),
+                    "data": quality_result.model_dump(by_alias=True),
                     "error": None
                 })
-
-        return results
-
-    def _assess_batch(self, images: list[Image.Image | None]) -> list[QualityResult]:
-        """
-        Assess quality of multiple pre-loaded images concurrently.
-
-        Args:
-            images: List of PIL Image objects (can contain None for failed loads)
-
-        Returns:
-            List of QualityResult objects
-        """
-        results = [None] * len(images)
-
-        for i, image in enumerate(images):
-            if image is None:
-                results[i] = None
-                continue
-            try:
-                result, _ = self._assess_image(image)
-                results[i] = result
-            except Exception as e:
-                logger.error(f"Failed to assess image at index {i}: {e}")
-                results[i] = None
 
         return results

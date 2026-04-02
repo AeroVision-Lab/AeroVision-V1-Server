@@ -28,7 +28,7 @@ async def assess_quality(request: ImageInput) -> QualityResponse:
     Returns an overall score and detailed metrics.
     """
     try:
-        result, timing_ms = _service.assess(request.image)
+        result, timing_ms = await _service.assess(request.image)
         increment_request_count(success=True)
 
         return QualityResponse(
